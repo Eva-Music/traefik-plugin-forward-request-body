@@ -72,9 +72,11 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	return ioutil.NopCloser(&buf), ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
 }
 
-func copyHeaders(dst http.Header, src http.Header) {
+func copyHeaders(dst, src http.Header) {
 	for k, vv := range src {
-		dst[k] = append(dst[k], vv...)
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
 	}
 }
 
