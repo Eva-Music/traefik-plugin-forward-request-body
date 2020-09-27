@@ -5,9 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/utils"
 )
 
 // Config holds the plugin configuration.
@@ -79,8 +76,8 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 	}
 	defer fRes.Body.Close()
 
-	utils.CopyHeaders(rw.Header(), fRes.Header)
-	utils.RemoveHeaders(rw.Header(), forward.HopHeaders...)
+	copyHeaders(rw.Header(), fRes.Header)
+	removeHeaders(rw.Header(), hopHeaders...)
 
 	// Grab the location header, if any.
 	redirectURL, err := fRes.Location()

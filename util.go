@@ -7,9 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/utils"
 )
 
 const (
@@ -19,7 +16,27 @@ const (
 	xForwardedPort   = "x-forwarded-port"
 	xForwardedURI    = "x-forwarded-uri"
 	xForwardedMethod = "x-forwarded-method"
+
+	connection         = "connection"
+	keepAlive          = "keep-alive"
+	proxyAuthenticate  = "proxy-authenticate"
+	proxyAuthorization = "proxy-authorization"
+	te                 = "te" // canonicalized version of "TE"
+	trailers           = "trailers"
+	transferEncoding   = "transfer-Encoding"
+	upgrade            = "upgrade"
 )
+
+var hopHeaders = []string{
+	connection,
+	keepAlive,
+	proxyAuthenticate,
+	proxyAuthorization,
+	te, // canonicalized version of "TE"
+	trailers,
+	transferEncoding,
+	upgrade,
+}
 
 func newForwardRequest(req *http.Request, forwardURL string) (*http.Request, error) {
 	drainedBody, body, err := drainBody(req.Body)
@@ -33,8 +50,8 @@ func newForwardRequest(req *http.Request, forwardURL string) (*http.Request, err
 		return nil, err
 	}
 
-	utils.CopyHeaders(fReq.Header, req.Header)
-	utils.RemoveHeaders(fReq.Header, forward.HopHeaders...)
+	copyHeaders(fReq.Header, req.Header)
+	removeHeaders(fReq.Header, hopHeaders...)
 	writeXForwardedHeaders(fReq.Header, req)
 
 	return fReq, nil
@@ -53,6 +70,18 @@ func drainBody(b io.ReadCloser) (r1, r2 io.ReadCloser, err error) {
 	}
 
 	return ioutil.NopCloser(&buf), ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
+}
+
+func copyHeaders(dst http.Header, src http.Header) {
+	for k, vv := range src {
+		dst[k] = append(dst[k], vv...)
+	}
+}
+
+func removeHeaders(headers http.Header, names ...string) {
+	for _, h := range names {
+		headers.Del(h)
+	}
 }
 
 func writeXForwardedHeaders(dst http.Header, req *http.Request) { // nolint:gocyclo
@@ -109,7 +138,7 @@ func writeXForwardedHeaders(dst http.Header, req *http.Request) { // nolint:gocy
 }
 
 func overrideHeaders(dst, src http.Header, overrideHeaders ...string) {
-	utils.RemoveHeaders(dst, overrideHeaders...)
+	removeHeaders(dst, overrideHeaders...)
 
 	for _, overrideHeader := range overrideHeaders {
 		values := src.Values(overrideHeader)
