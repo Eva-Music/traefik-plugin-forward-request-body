@@ -1,5 +1,5 @@
 displayName: Forward Request
-summary: Forward HTTP requests to an external service.
+summary: Forwards HTTP requests to an external service.
 type: middleware
 import: github.com/kzmake/traefik-plugin-forward-request
 testData:
