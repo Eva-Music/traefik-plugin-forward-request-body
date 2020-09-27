@@ -1,4 +1,4 @@
-package forwardrequest
+package traefik_plugin_forward_request
 
 import (
 	"bytes"
