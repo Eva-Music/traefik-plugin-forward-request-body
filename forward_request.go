@@ -9,8 +9,7 @@ import (
 
 // Config holds the plugin configuration.
 type Config struct {
-	URL             string   `json:"url,omitempty"`
-	ResponseHeaders []string `json:"responseHeaders,omitempty"`
+	URL string `json:"url,omitempty"`
 }
 
 // CreateConfig creates and initializes the plugin configuration.
@@ -19,11 +18,10 @@ func CreateConfig() *Config {
 }
 
 type forwardRequest struct {
-	name            string
-	next            http.Handler
-	client          http.Client
-	url             string
-	responseHeaders []string
+	name   string
+	next   http.Handler
+	client http.Client
+	url    string
 }
 
 // New creates and returns a plugin instance.
@@ -36,11 +34,10 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 	}
 
 	return &forwardRequest{
-		name:            name,
-		next:            next,
-		client:          client,
-		url:             config.URL,
-		responseHeaders: config.ResponseHeaders,
+		name:   name,
+		next:   next,
+		client: client,
+		url:    config.URL,
 	}, nil
 }
 
@@ -50,6 +47,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
 	fRes, err := p.client.Do(fReq)
 	if err != nil {
@@ -64,7 +62,8 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// 2XX -> next
-	overrideHeaders(req.Header, fRes.Header, p.responseHeaders...)
+	//overrideHeaders(req.Header, fRes.Header, req.Header.)
+	req.Header = fRes.Header
 	p.next.ServeHTTP(rw, req)
 }
 
