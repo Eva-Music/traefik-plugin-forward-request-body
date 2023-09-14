@@ -1,6 +1,6 @@
 displayName: Forward Request
 summary: Forwards HTTP requests to an external service.
 type: middleware
-import: github.com/kzmake/traefik-plugin-forward-request
+import: github.com/Eva-Music/traefik-plugin-forward-request-body
 testData:
   unused: var
