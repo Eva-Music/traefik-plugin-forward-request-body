@@ -3,12 +3,9 @@ package traefik_plugin_forward_request_body
 import (
 	"context"
 	"io"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
-	"log"
-	"net/http/httputil"
-	"errors"
 )
 
 // Config holds the plugin configuration.
@@ -54,13 +51,31 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	//
+	forwardReqBody, err := io.ReadAll(forwardReq.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	forwardReqBodyString := string(forwardReqBody)
+	log.Printf("Forward request body before: " + forwardReqBodyString)
+	//
+
 	forwardResponse, forwardErr := p.client.Do(forwardReq)
 	if forwardErr != nil {
 		log.Printf("Error response", forwardErr)
 		rw.WriteHeader(http.StatusInternalServerError)
-
 		return
 	}
+
+	//
+	forwardReqBodyAfter, err := io.ReadAll(forwardReq.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	forwardReqBodyStringAfter := string(forwardReqBodyAfter)
+	log.Printf("Forward request body after: " + forwardReqBodyStringAfter)
+	//
+
 
 	// not 2XX -> return forward response
 	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
