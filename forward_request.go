@@ -8,6 +8,7 @@ import (
 	"time"
 	"log"
 	"net/http/httputil"
+	"errors"
 )
 
 // Config holds the plugin configuration.
@@ -45,61 +46,45 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 }
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	fReq, err := newForwardRequest(req, p.url)
+	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
+	forwardReq.Header = req.Header
 	if err != nil {
+		log.Printf("Error request", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
-	/////
-	//bodyBytes, err := io.ReadAll(fReq.Body)
-	//if err != nil {
-	//	log.Printf("Request body read error : %e\n", err)
-	//}
-	//bodyString := string(bodyBytes)
-	//log.Printf("Request body: " + bodyString)
-	//
-	//b, err := httputil.DumpRequest(fReq, true)
-	//if err != nil {
-	//	log.Fatalln(err)
-	//}
-	//log.Printf("Request:  " + string(b))
-	/////
-
-	fRes, err := p.client.Do(fReq)
-	if err != nil {
+	forwardResponse, forwardErr := p.client.Do(forwardReq)
+	if forwardErr != nil {
+		log.Printf("Error response", forwardErr)
 		rw.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
-	
+
 	// not 2XX -> return forward response
-	if fRes.StatusCode < http.StatusOK || fRes.StatusCode >= http.StatusMultipleChoices {
-		p.writeForwardResponse(rw, fRes)
+	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
+		p.writeForwardResponse(rw, forwardResponse)
 		return
 	}
 
-	// 2XX -> next
-	//overrideHeaders(req.Header, fRes.Header, req.Header.)
-	req.Header = fRes.Header
 
+	req.RequestURI = req.URL.RequestURI()
+	req.Header = forwardResponse.Header.Clone()
 
-	////
-	bodyBytesRes, err := io.ReadAll(fRes.Body)
-	if err != nil {
-		log.Printf("Response body read error : %e\n", err)
-	}
-	bodyBytesResString := string(bodyBytesRes)
-	log.Printf("Response body: " + bodyBytesResString)
-
-	h, err := httputil.DumpResponse(fRes, true)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Printf("Response:  " + string(h))
-	////
-	
 	p.next.ServeHTTP(rw, req)
+}
+
+func RemoveHeaders(headers http.Header, names ...string) {
+	for _, h := range names {
+		headers.Del(h)
+	}
+}
+
+func CopyHeaders(dst http.Header, src http.Header) {
+	for k, vv := range src {
+		dst[k] = append(dst[k], vv...)
+	}
 }
 
 func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http.Response) {
@@ -110,8 +95,8 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 	}
 	defer fRes.Body.Close()
 
-	copyHeaders(rw.Header(), fRes.Header)
-	removeHeaders(rw.Header(), hopHeaders...)
+	CopyHeaders(rw.Header(), fRes.Header)
+	RemoveHeaders(rw.Header(), hopHeaders...)
 
 	// Grab the location header, if any.
 	redirectURL, err := fRes.Location()
