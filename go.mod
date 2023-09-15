@@ -1,3 +1,3 @@
 module github.com/Eva-Music/traefik-plugin-forward-request-body
 
-go 1.14
+go 1.19.2

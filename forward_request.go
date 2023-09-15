@@ -26,6 +26,36 @@ type forwardRequest struct {
 	url    string
 }
 
+
+func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http.Response) {
+	body, err := ioutil.ReadAll(fRes.Body)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer fRes.Body.Close()
+
+	CopyHeaders(rw.Header(), fRes.Header)
+	RemoveHeaders(rw.Header(), hopHeaders...)
+
+	// Grab the location header, if any.
+	redirectURL, err := fRes.Location()
+
+	if err != nil {
+		if err != http.ErrNoLocation {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else if redirectURL.String() != "" {
+		// Set the location in our response if one was sent back.
+		rw.Header().Set("Location", redirectURL.String())
+	}
+
+	rw.WriteHeader(fRes.StatusCode)
+	_, _ = rw.Write(body)
+}
+
+
 // New creates and returns a plugin instance.
 func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	client := http.Client{
@@ -101,32 +131,4 @@ func CopyHeaders(dst http.Header, src http.Header) {
 	for k, vv := range src {
 		dst[k] = append(dst[k], vv...)
 	}
-}
-
-func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http.Response) {
-	body, err := ioutil.ReadAll(fRes.Body)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer fRes.Body.Close()
-
-	CopyHeaders(rw.Header(), fRes.Header)
-	RemoveHeaders(rw.Header(), hopHeaders...)
-
-	// Grab the location header, if any.
-	redirectURL, err := fRes.Location()
-
-	if err != nil {
-		if err != http.ErrNoLocation {
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	} else if redirectURL.String() != "" {
-		// Set the location in our response if one was sent back.
-		rw.Header().Set("Location", redirectURL.String())
-	}
-
-	rw.WriteHeader(fRes.StatusCode)
-	_, _ = rw.Write(body)
 }
