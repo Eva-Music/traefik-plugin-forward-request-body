@@ -1,4 +1,4 @@
-package traefik_plugin_forward_request
+package traefik_plugin_forward_request_body
 
 import (
 	"context"
