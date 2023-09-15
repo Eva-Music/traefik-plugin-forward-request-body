@@ -2,9 +2,12 @@ package traefik_plugin_forward_request_body
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
+	"log"
+	"net/http/httputil"
 )
 
 // Config holds the plugin configuration.
@@ -49,12 +52,42 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
+	///
+	bodyBytes, err := io.ReadAll(fReq.Body)
+	if err != nil {
+		log.Printf("Request body read error : %e\n", err)
+	}
+	bodyString := string(bodyBytes)
+	log.Printf("Request body: " + bodyString)
+
+	b, err := httputil.DumpRequest(fReq, true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("Request:  " + string(b))
+	///
+
 	fRes, err := p.client.Do(fReq)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	
+	////
+	bodyBytesRes, err := io.ReadAll(fRes.Body)
+	if err != nil {
+		log.Printf("Response body read error : %e\n", err)
+	}
+	bodyBytesResString := string(bodyBytesRes)
+	log.Printf("Response body: " + bodyBytesResString)
 
+	h, err := httputil.DumpResponse(fRes, true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("Response:  " + string(h))
+
+	////
 	// not 2XX -> return forward response
 	if fRes.StatusCode < http.StatusOK || fRes.StatusCode >= http.StatusMultipleChoices {
 		p.writeForwardResponse(rw, fRes)
