@@ -3,6 +3,7 @@ package traefik_plugin_forward_request_body
 import (
 	"context"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -46,7 +47,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
 	forwardReq.Header = req.Header
 	if err != nil {
-		log.Printf("Error request", err)
+		log.Printf("Error request " + err.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -62,7 +63,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	forwardResponse, forwardErr := p.client.Do(forwardReq)
 	if forwardErr != nil {
-		log.Printf("Error response", forwardErr)
+		log.Printf("Error response " + forwardErr.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
