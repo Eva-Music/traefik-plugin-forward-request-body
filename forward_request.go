@@ -52,20 +52,20 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
-	///
-	bodyBytes, err := io.ReadAll(fReq.Body)
-	if err != nil {
-		log.Printf("Request body read error : %e\n", err)
-	}
-	bodyString := string(bodyBytes)
-	log.Printf("Request body: " + bodyString)
-
-	b, err := httputil.DumpRequest(fReq, true)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Printf("Request:  " + string(b))
-	///
+	/////
+	//bodyBytes, err := io.ReadAll(fReq.Body)
+	//if err != nil {
+	//	log.Printf("Request body read error : %e\n", err)
+	//}
+	//bodyString := string(bodyBytes)
+	//log.Printf("Request body: " + bodyString)
+	//
+	//b, err := httputil.DumpRequest(fReq, true)
+	//if err != nil {
+	//	log.Fatalln(err)
+	//}
+	//log.Printf("Request:  " + string(b))
+	/////
 
 	fRes, err := p.client.Do(fReq)
 	if err != nil {
@@ -73,6 +73,17 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	
+	// not 2XX -> return forward response
+	if fRes.StatusCode < http.StatusOK || fRes.StatusCode >= http.StatusMultipleChoices {
+		p.writeForwardResponse(rw, fRes)
+		return
+	}
+
+	// 2XX -> next
+	//overrideHeaders(req.Header, fRes.Header, req.Header.)
+	req.Header = fRes.Header
+
+
 	////
 	bodyBytesRes, err := io.ReadAll(fRes.Body)
 	if err != nil {
@@ -86,17 +97,8 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		log.Fatalln(err)
 	}
 	log.Printf("Response:  " + string(h))
-
 	////
-	// not 2XX -> return forward response
-	if fRes.StatusCode < http.StatusOK || fRes.StatusCode >= http.StatusMultipleChoices {
-		p.writeForwardResponse(rw, fRes)
-		return
-	}
-
-	// 2XX -> next
-	//overrideHeaders(req.Header, fRes.Header, req.Header.)
-	req.Header = fRes.Header
+	
 	p.next.ServeHTTP(rw, req)
 }
 
