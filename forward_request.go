@@ -42,28 +42,29 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 }
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	fReq, err := newForwardRequest(req, p.url)
+	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
+	forwardReq.Header = req.Header
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
-	fRes, err := p.client.Do(fReq)
+	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// not 2XX -> return forward response
-	if fRes.StatusCode < http.StatusOK || fRes.StatusCode >= http.StatusMultipleChoices {
-		p.writeForwardResponse(rw, fRes)
+	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
+		p.writeForwardResponse(rw, forwardResponse)
 		return
 	}
 
 	// 2XX -> next
 	//overrideHeaders(req.Header, fRes.Header, req.Header.)
-	req.Header = fRes.Header
+	req.Header = forwardResponse.Header
 	p.next.ServeHTTP(rw, req)
 }
 
