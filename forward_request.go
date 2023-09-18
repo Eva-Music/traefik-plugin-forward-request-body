@@ -1,8 +1,12 @@
 package traefik_plugin_forward_request_body
 
 import (
+	//"bytes"
 	"context"
+	//"encoding/json"
+	//"io"
 	"io/ioutil"
+	//"log"
 	"net/http"
 	"time"
 )
