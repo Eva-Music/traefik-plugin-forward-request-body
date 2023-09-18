@@ -92,11 +92,10 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	//	Body:   req.Body,
 	//}
 
-	headers, _ := json.Marshal(forwardReq.Header)
-	data, _ := io.ReadAll(forwardReq.Body)
-	forwardReq.Body.Close()
-	log.Printf("Request headers: %s, request body (%d bytes): %s", string(headers), len(data), string(data))
-
+	//headers, _ := json.Marshal(forwardReq.Header)
+	//data, _ := io.ReadAll(forwardReq.Body)
+	//forwardReq.Body.Close()
+	//log.Printf("Request headers: %s, request body (%d bytes): %s", string(headers), len(data), string(data))
 
 
 	forwardResponse, forwardErr := p.client.Do(forwardReq)
@@ -105,6 +104,14 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	headers, _ := json.Marshal(forwardResponse.Header)
+	data, _ := io.ReadAll(forwardResponse.Body)
+	forwardReq.Body.Close()
+	log.Printf("Response headers: %s, response body (%d bytes): %s", string(headers), len(data), string(data))
+
+
+
 
 	// not 2XX -> return forward response
 	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
