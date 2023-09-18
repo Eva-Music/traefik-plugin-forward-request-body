@@ -24,7 +24,7 @@ func CreateConfig() *Config {
 type forwardRequest struct {
 	name   string
 	next   http.Handler
-	client http.Client
+	//client http.Client
 	url    string
 }
 
@@ -59,17 +59,10 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 
 // New creates and returns a plugin instance.
 func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
-	client := http.Client{
-		CheckRedirect: func(r *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Timeout: 30 * time.Second,
-	}
-
 	return &forwardRequest{
 		name:   name,
 		next:   next,
-		client: client,
+		//client: client,
 		url:    config.URL,
 	}, nil
 }
@@ -97,10 +90,14 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	//forwardReq.Body.Close()
 	//log.Printf("Request headers: %s, request body (%d bytes): %s", string(headers), len(data), string(data))
 
+	client := http.Client{
+		CheckRedirect: func(r *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Timeout: 30 * time.Second,
+	}
 
-	forwardResponse, forwardErr := http.DefaultClient.Do(req)
-
-	//forwardResponse, forwardErr := p.client.Do(forwardReq)
+	forwardResponse, forwardErr := client.Do(forwardReq)
 	if forwardErr != nil {
 		log.Printf("Error response " + forwardErr.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
