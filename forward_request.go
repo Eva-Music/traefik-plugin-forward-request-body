@@ -3,6 +3,7 @@ package traefik_plugin_forward_request_body
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
@@ -75,18 +76,28 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	//check first request body
-	data, err := io.ReadAll(req.Body)
-	req.Body.Close()
-	log.Printf("Got body (%d bytes): %s", len(data), string(data))
-
-	forwardReq, err := http.NewRequest(req.Method, p.url, bytes.NewBuffer(data))
+	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
 	forwardReq.Header = req.Header
 	if err != nil {
 		log.Printf("Error request " + err.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	//reqURL := *req.URL
+	//forwardReq := &http.Request{
+	//	URL:    &reqURL,
+	//	Method: req.Method,
+	//	Header: req.Header,
+	//	Body:   req.Body,
+	//}
+
+	headers, _ := json.Marshal(forwardReq.Header)
+	data, _ := io.ReadAll(forwardReq.Body)
+	forwardReq.Body.Close()
+	log.Printf("Request headers: %s, request body (%d bytes): %s", string(headers), len(data), string(data))
+
+
 
 	forwardResponse, forwardErr := p.client.Do(forwardReq)
 	if forwardErr != nil {
