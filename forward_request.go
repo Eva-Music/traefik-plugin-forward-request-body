@@ -3,8 +3,8 @@ package traefik_plugin_forward_request_body
 import (
 	//"bytes"
 	"context"
-	//"encoding/json"
-	//"io"
+	"encoding/json"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,7 +24,7 @@ func CreateConfig() *Config {
 type forwardRequest struct {
 	name   string
 	next   http.Handler
-	//client http.Client
+	client http.Client
 	url    string
 }
 
@@ -59,23 +59,40 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 
 // New creates and returns a plugin instance.
 func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
+	client := http.Client{
+		CheckRedirect: func(r *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Timeout: 30 * time.Second,
+	}
+
 	return &forwardRequest{
 		name:   name,
 		next:   next,
-		//client: client,
+		client: client,
 		url:    config.URL,
 	}, nil
 }
 
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
-	forwardReq.Header = req.Header
+	//forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
+	//forwardReq.Header = req.Header
+	//if err != nil {
+	//	log.Printf("Error request " + err.Error())
+	//	rw.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
+
+
+
+	resp, err := http.PostForm(req.URL.RequestURI(), req.Form)
 	if err != nil {
 		log.Printf("Error request " + err.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 
 	//reqURL := *req.URL
 	//forwardReq := &http.Request{
@@ -89,29 +106,22 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	//data, _ := io.ReadAll(forwardReq.Body)
 	//forwardReq.Body.Close()
 	//log.Printf("Request headers: %s, request body (%d bytes): %s", string(headers), len(data), string(data))
-
-	client := http.Client{
-		CheckRedirect: func(r *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Timeout: 30 * time.Second,
-	}
-
-	forwardResponse, forwardErr := client.Do(forwardReq)
-	if forwardErr != nil {
-		log.Printf("Error response " + forwardErr.Error())
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	//
+	//forwardResponse, forwardErr := p.client.Do(forwardReq)
+	//if forwardErr != nil {
+	//	log.Printf("Error response " + forwardErr.Error())
+	//	rw.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
 
 	// not 2XX -> return forward response
-	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
-		p.writeForwardResponse(rw, forwardResponse)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		p.writeForwardResponse(rw, resp)
 		return
 	}
 
 	req.RequestURI = req.URL.RequestURI()
-	req.Header = forwardResponse.Header.Clone()
+	req.Header = resp.Header.Clone()
 
 	p.next.ServeHTTP(rw, req)
 }
