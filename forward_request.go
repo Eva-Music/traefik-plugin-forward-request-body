@@ -1,6 +1,7 @@
 package traefik_plugin_forward_request_body
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -74,22 +75,18 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
+	//check first request body
+	data, err := io.ReadAll(req.Body)
+	req.Body.Close()
+	log.Printf("Got body (%d bytes): %s", len(data), string(data))
+
+	forwardReq, err := http.NewRequest(req.Method, p.url, bytes.NewBuffer(data))
 	forwardReq.Header = req.Header
 	if err != nil {
 		log.Printf("Error request " + err.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	//
-	//forwardReqBody, err := io.ReadAll(forwardReq.Body)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//forwardReqBodyString := string(forwardReqBody)
-	//log.Printf("Forward request body before: " + forwardReqBodyString)
-	//
 
 	forwardResponse, forwardErr := p.client.Do(forwardReq)
 	if forwardErr != nil {
@@ -98,22 +95,11 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	//
-	//forwardReqBodyAfter, err := io.ReadAll(forwardReq.Body)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//forwardReqBodyStringAfter := string(forwardReqBodyAfter)
-	//log.Printf("Forward request body after: " + forwardReqBodyStringAfter)
-	//
-
-
 	// not 2XX -> return forward response
 	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
 		p.writeForwardResponse(rw, forwardResponse)
 		return
 	}
-
 
 	req.RequestURI = req.URL.RequestURI()
 	req.Header = forwardResponse.Header.Clone()
