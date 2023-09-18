@@ -1,10 +1,10 @@
 package traefik_plugin_forward_request_body
 
 import (
-	"bytes"
+	//"bytes"
 	"context"
-	"encoding/json"
-	"io"
+	//"encoding/json"
+	//"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -98,20 +98,14 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	//log.Printf("Request headers: %s, request body (%d bytes): %s", string(headers), len(data), string(data))
 
 
-	forwardResponse, forwardErr := p.client.Do(forwardReq)
+	forwardResponse, forwardErr := http.DefaultClient.Do(req)
+
+	//forwardResponse, forwardErr := p.client.Do(forwardReq)
 	if forwardErr != nil {
 		log.Printf("Error response " + forwardErr.Error())
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	headers, _ := json.Marshal(forwardResponse.Header)
-	data, _ := io.ReadAll(forwardResponse.Body)
-	forwardReq.Body.Close()
-	log.Printf("Response headers: %s, response body (%d bytes): %s", string(headers), len(data), string(data))
-
-
-
 
 	// not 2XX -> return forward response
 	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
