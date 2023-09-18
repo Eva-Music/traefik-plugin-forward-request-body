@@ -26,7 +26,6 @@ type forwardRequest struct {
 	url    string
 }
 
-
 func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http.Response) {
 	body, err := ioutil.ReadAll(fRes.Body)
 	if err != nil {
@@ -73,6 +72,7 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 	}, nil
 }
 
+
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
 	forwardReq.Header = req.Header
@@ -83,12 +83,12 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	//
-	forwardReqBody, err := io.ReadAll(forwardReq.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	forwardReqBodyString := string(forwardReqBody)
-	log.Printf("Forward request body before: " + forwardReqBodyString)
+	//forwardReqBody, err := io.ReadAll(forwardReq.Body)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//forwardReqBodyString := string(forwardReqBody)
+	//log.Printf("Forward request body before: " + forwardReqBodyString)
 	//
 
 	forwardResponse, forwardErr := p.client.Do(forwardReq)
@@ -99,12 +99,12 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	//
-	forwardReqBodyAfter, err := io.ReadAll(forwardReq.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	forwardReqBodyStringAfter := string(forwardReqBodyAfter)
-	log.Printf("Forward request body after: " + forwardReqBodyStringAfter)
+	//forwardReqBodyAfter, err := io.ReadAll(forwardReq.Body)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//forwardReqBodyStringAfter := string(forwardReqBodyAfter)
+	//log.Printf("Forward request body after: " + forwardReqBodyStringAfter)
 	//
 
 
