@@ -1,10 +1,9 @@
 package traefik_plugin_forward_request_body
 
 import (
-	"strconv"
-	"bytes"
+	//"bytes"
 	"context"
-	"encoding/json"
+	//"encoding/json"
 	//"io"
 	"io/ioutil"
 	"log"
@@ -47,20 +46,22 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 }
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	jsonPayload, err := json.Marshal(req.Body)
-	forwardReq, err := http.NewRequest(req.Method, p.url, bytes.NewBuffer(jsonPayload))
-	forwardReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
-	forwardReq.Header.Set("Accept","*/*")
-	forwardReq.ContentLength = int64(len(jsonPayload))
+	//jsonPayload, err := json.Marshal(req.Body)
+	forwardReq, err := http.NewRequest(req.Method, p.url, nil)
+	//forwardReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
+	//forwardReq.Header.Set("Accept","*/*")
+	//forwardReq.ContentLength = int64(len(jsonPayload))
+	log.Printf(req.URL.RawQuery)
 
-	//proxyRequest.Header = req.Header
+	forwardReq.Header = req.Header
+	forwardReq.URL.RawQuery = req.URL.RawQuery
 
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf(forwardReq.PostForm["grant_type"][0])
+	log.Printf(forwardReq.Form["grant_type"][0])
 
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
