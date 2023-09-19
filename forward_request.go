@@ -65,8 +65,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	forwardReq.Header = req.Header
 
-	log.Printf(forwardReq.Header.Get("Content-Type"))
-	log.Printf(forwardReq.URL.RawQuery)
+	//log.Printf(forwardReq.URL.RawQuery)
 	forwardReq.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 
 	if err != nil {
@@ -82,14 +81,18 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	defer forwardResponse.Body.Close()
 
 	// not 2XX -> return forward response
-	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
-		p.writeForwardResponse(rw, forwardResponse)
-		return
-	}
+	//if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
+	//	p.writeForwardResponse(rw, forwardResponse)
+	//	return
+	//}
 
 	// 2XX -> next
 	//overrideHeaders(req.Header, fRes.Header, req.Header.)
-	req.Header = forwardResponse.Header
+	//req.Header = forwardResponse.Header
+	//req.Body = forwardResponse.Body
+	
+	p.writeForwardResponse(rw, forwardResponse)
+	
 	p.next.ServeHTTP(rw, req)
 }
 
