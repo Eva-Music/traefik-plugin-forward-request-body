@@ -60,7 +60,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Print(forwardReq.PostForm["grant_type"])
+	log.Printf(forwardReq.PostForm["grant_type"][0])
 
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
