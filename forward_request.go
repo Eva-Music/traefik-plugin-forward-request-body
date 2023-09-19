@@ -54,11 +54,13 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
+	p.client.Timeout = 50 * time.Millisecond
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	defer forwardResponse.Body.Close()
 
 	// not 2XX -> return forward response
 	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
