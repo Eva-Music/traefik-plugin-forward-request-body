@@ -61,8 +61,6 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Printf(forwardReq.Form["grant_type"][0])
-
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
