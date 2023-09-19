@@ -1,9 +1,9 @@
 package traefik_plugin_forward_request_body
 
 import (
-	//"bytes"
+	"bytes"
 	"context"
-	//"encoding/json"
+	"encoding/json"
 	//"io"
 	"io/ioutil"
 	//"log"
@@ -46,15 +46,15 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 }
 
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	forwardReq, err := http.NewRequest(req.Method, p.url, req.Body)
-	forwardReq.Header = req.Header
+	jsonPayload, err := json.Marshal(req.Body)
+	forwardReq, err := http.NewRequest(req.Method, p.url, bytes.NewBuffer(jsonPayload))
+	forwardReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
+
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	//fReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
 
-	p.client.Timeout = 50 * time.Millisecond
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
