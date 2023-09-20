@@ -88,23 +88,13 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http.Response) {
-	body, err := ioutil.ReadAll(fRes.Body)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer fRes.Body.Close()
-
-	copyHeaders(rw.Header(), fRes.Header)
-	removeHeaders(rw.Header(), hopHeaders...)
-
 	//add access_token to header if exist
 	var t token
 	var unmarshalErr *json.UnmarshalTypeError
 
 	decoder := json.NewDecoder(fRes.Body)
 	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&t)
+	err := decoder.Decode(&t)
 	if err != nil {
 		if errors.As(err, &unmarshalErr) {
 			errorResponse(rw,"Bad Request. Wrong Type provided for field " + unmarshalErr.Field,
@@ -115,6 +105,16 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 			return
 		}
 	}
+
+	body, err := ioutil.ReadAll(fRes.Body)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer fRes.Body.Close()
+
+	copyHeaders(rw.Header(), fRes.Header)
+	removeHeaders(rw.Header(), hopHeaders...)
 
 	rw.Header().Set("Authorization", t.TokenType + " " + t.AccessToken)
 
