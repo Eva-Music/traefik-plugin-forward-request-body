@@ -82,7 +82,13 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	defer forwardResponse.Body.Close()
 
-	p.writeForwardResponse(rw, forwardResponse)
+	// not 2XX -> return forward response
+	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
+		errorResponse(rw, "Bad Request " + err.Error(), http.StatusInternalServerError)
+		return
+	} else {
+		p.writeForwardResponse(rw, forwardResponse)
+	}
 
 	p.next.ServeHTTP(rw, req)
 }
@@ -109,7 +115,7 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 				http.StatusInternalServerError)
 			return
 		} else {
-			errorResponse(rw,"Bad Request "+err.Error(), http.StatusInternalServerError)
+			errorResponse(rw,"Bad Request " + err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
