@@ -66,7 +66,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	forwardReq, err := http.NewRequest(req.Method, p.url,strings.NewReader(data.Encode()))
+	forwardReq, err := http.NewRequest(http.MethodPost, p.url,strings.NewReader(data.Encode()))
 	forwardReq.Header = req.Header
 	forwardReq.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 
