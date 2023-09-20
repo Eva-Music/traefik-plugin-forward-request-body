@@ -3,12 +3,13 @@ package traefik_plugin_forward_request_body
 import (
 	//"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"io/ioutil"
-	"log"
+	//"log"
 	"net/http"
 	"net/url"
 	"strconv"
-	//"encoding/json"
 	//"io"
 	"strings"
 	"time"
@@ -17,6 +18,17 @@ import (
 // Config holds the plugin configuration.
 type Config struct {
 	URL string `json:"url,omitempty"`
+}
+
+type token struct {
+	AccessToken 	   string `json:"access_token"`
+	ExpiresIn   	   int    `json:"expires_in"`
+	RefreshExpiresIn   int    `json:"refresh_expires_in"`
+	RefreshToken 	   string `json:"refresh_token"`
+	TokenType 	   	   string `json:"token_type"`
+	NotBeforePolicy    int    `json:"not-before-policy"`
+	SessionState 	   string `json:"session_state"`
+	Scope 	   		   string `json:"scope"`
 }
 
 // CreateConfig creates and initializes the plugin configuration.
@@ -32,7 +44,7 @@ type forwardRequest struct {
 }
 
 // New creates and returns a plugin instance.
-func New(_ context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
+func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
 	client := http.Client{
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -41,7 +53,6 @@ func New(_ context.Context, next http.Handler, config *Config, name string) (htt
 	}
 
 	return &forwardRequest{
-		name:   name,
 		next:   next,
 		client: client,
 		url:    config.URL,
@@ -56,16 +67,7 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	forwardReq, err := http.NewRequest(req.Method, p.url,strings.NewReader(data.Encode()))
-
-	//jsonPayload, err := json.Marshal(req.Body)
-	//forwardReq, err := http.NewRequest(req.Method, p.url, nil)
-	//forwardReq.Header.Set("Content-Type", req.Header.Values("Content-Type")[0])
-	//forwardReq.Header.Set("Accept","*/*")
-	//forwardReq.ContentLength = int64(len(jsonPayload))
-
 	forwardReq.Header = req.Header
-
-	//log.Printf(forwardReq.URL.RawQuery)
 	forwardReq.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 
 	if err != nil {
@@ -80,19 +82,8 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	defer forwardResponse.Body.Close()
 
-	// not 2XX -> return forward response
-	//if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
-	//	p.writeForwardResponse(rw, forwardResponse)
-	//	return
-	//}
-
-	// 2XX -> next
-	//overrideHeaders(req.Header, fRes.Header, req.Header.)
-	//req.Header = forwardResponse.Header
-	//req.Body = forwardResponse.Body
-	
 	p.writeForwardResponse(rw, forwardResponse)
-	
+
 	p.next.ServeHTTP(rw, req)
 }
 
@@ -106,6 +97,26 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 
 	copyHeaders(rw.Header(), fRes.Header)
 	removeHeaders(rw.Header(), hopHeaders...)
+
+	//add access_token to header if exist
+	var t token
+	var unmarshalErr *json.UnmarshalTypeError
+
+	decoder := json.NewDecoder(fRes.Body)
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&t)
+	if err != nil {
+		if errors.As(err, &unmarshalErr) {
+			errorResponse(rw,"Bad Request. Wrong Type provided for field " + unmarshalErr.Field,
+				http.StatusInternalServerError)
+			return
+		} else {
+			errorResponse(rw,"Bad Request "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	rw.Header().Set("Authorization", t.TokenType + " " + t.AccessToken)
 
 	// Grab the location header, if any.
 	redirectURL, err := fRes.Location()
@@ -122,4 +133,12 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 
 	rw.WriteHeader(fRes.StatusCode)
 	_, _ = rw.Write(body)
+}
+
+func errorResponse(rw http.ResponseWriter, message string, httpStatusCode int) {
+	resp := make(map[string]string)
+	rw.WriteHeader(httpStatusCode)
+	resp["error"] = message
+	jsonResp, _ := json.Marshal(resp)
+	rw.Write(jsonResp)
 }
