@@ -1,12 +1,12 @@
 package traefik_plugin_forward_request_body
 
 import (
-	"bytes"
+	//"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"log"
+	//"io/ioutil"
+	//"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -88,21 +88,20 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http.Response) {
-	body, err := ioutil.ReadAll(fRes.Body)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer fRes.Body.Close()
+	//body, err := ioutil.ReadAll(fRes.Body)
+	//if err != nil {
+	//	rw.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
+	//defer fRes.Body.Close()
 
 	//add access_token to header if exist
 	var t token
 	var unmarshalErr *json.UnmarshalTypeError
 
-	decoder := json.NewDecoder(bytes.NewBuffer(body))
+	decoder := json.NewDecoder(fRes.Body)
 	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&t)
-	log.Print(t)
+	err := decoder.Decode(&t)
 
 	if err != nil {
 		if errors.As(err, &unmarshalErr) {
@@ -114,6 +113,7 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 			return
 		}
 	}
+	defer fRes.Body.Close()
 
 	copyHeaders(rw.Header(), fRes.Header)
 	removeHeaders(rw.Header(), hopHeaders...)
@@ -134,7 +134,7 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 	}
 
 	rw.WriteHeader(fRes.StatusCode)
-	_, _ = rw.Write(body)
+	//_, _ = rw.Write(body)
 }
 
 func errorResponse(rw http.ResponseWriter, message string, httpStatusCode int) {
