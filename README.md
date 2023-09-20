@@ -7,4 +7,4 @@ plugin:
           url: http://.../protocol/openid-connect/token
 ```
 
-# add access_token to Authorization header
+> add access_token to Authorization header
