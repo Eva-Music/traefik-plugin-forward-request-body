@@ -62,7 +62,7 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	data, err := url.ParseQuery(req.URL.RawQuery)
 	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
+		errorResponse(rw,"Error " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -71,13 +71,13 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	forwardReq.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 
 	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
+		errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
+		errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer forwardResponse.Body.Close()
