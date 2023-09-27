@@ -67,13 +67,12 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	forwardReq, err := http.NewRequest(http.MethodPost, p.url,strings.NewReader(data.Encode()))
-	forwardReq.Header = req.Header
-	forwardReq.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
-
 	if err != nil {
 		errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
 		return
 	}
+	forwardReq.Header = req.Header
+	forwardReq.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
@@ -149,4 +148,5 @@ func errorResponse(rw http.ResponseWriter, message string, httpStatusCode int) {
 	resp["error"] = message
 	jsonResp, _ := json.Marshal(resp)
 	rw.Write(jsonResp)
+	http.Error(rw, string(jsonResp), httpStatusCode)
 }
