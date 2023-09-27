@@ -62,13 +62,13 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	data, err := url.ParseQuery(req.URL.RawQuery)
 	if err != nil {
-		errorResponse(rw,"Error " + err.Error(), http.StatusInternalServerError)
+		p.errorResponse(rw,"Error " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	forwardReq, err := http.NewRequest(http.MethodPost, p.url,strings.NewReader(data.Encode()))
 	if err != nil {
-		errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
+		p.errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
 		return
 	}
 	forwardReq.Header = req.Header
@@ -76,14 +76,14 @@ func (p *forwardRequest) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	forwardResponse, err := p.client.Do(forwardReq)
 	if err != nil {
-		errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
+		p.errorResponse(rw,"Bad Request " + err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer forwardResponse.Body.Close()
 
 	// not 2XX -> return forward response
 	if forwardResponse.StatusCode < http.StatusOK || forwardResponse.StatusCode >= http.StatusMultipleChoices {
-		errorResponse(rw, "Bad Request " + err.Error(), http.StatusInternalServerError)
+		p.errorResponse(rw, "Bad Request " + err.Error(), http.StatusInternalServerError)
 		return
 	} else {
 		p.writeForwardResponse(rw, forwardResponse)
@@ -110,11 +110,11 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 
 	if err != nil {
 		if errors.As(err, &unmarshalErr) {
-			errorResponse(rw,"Bad Request. Wrong Type provided for field " + unmarshalErr.Field,
+			p.errorResponse(rw,"Bad Request. Wrong Type provided for field " + unmarshalErr.Field,
 				http.StatusInternalServerError)
 			return
 		} else {
-			errorResponse(rw,"Bad Request " + err.Error(), http.StatusInternalServerError)
+			p.errorResponse(rw,"Bad Request " + err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -123,7 +123,7 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 	copyHeaders(rw.Header(), fRes.Header)
 	removeHeaders(rw.Header(), hopHeaders...)
 
-	rw.Header().Set("Authorization", t.TokenType + " " + t.AccessToken)
+	rw.Header().Add("Authorization", "Bearer " + t.AccessToken)
 
 	// Grab the location header, if any.
 	redirectURL, err := fRes.Location()
@@ -142,7 +142,7 @@ func (p *forwardRequest) writeForwardResponse(rw http.ResponseWriter, fRes *http
 	//_, _ = rw.Write(body)
 }
 
-func errorResponse(rw http.ResponseWriter, message string, httpStatusCode int) {
+func(p *forwardRequest) errorResponse(rw http.ResponseWriter, message string, httpStatusCode int) {
 	resp := make(map[string]string)
 	rw.WriteHeader(httpStatusCode)
 	resp["error"] = message
